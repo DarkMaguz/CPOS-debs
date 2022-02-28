@@ -1,19 +1,31 @@
 #!/bin/python3
 
 import os
+import glob
 
-debsList = ['discord', 'firefox']
+debDirList = ['discord', 'firefox']
 baseDir = os.getcwd()
-deployPath = os.environ.get('DEB_DEPLOY_PATH')
+repoBasePath = os.environ.get('REPOSITORY_BASE_PATH')
+repoDebPath = os.path.join(repoBasePath, "repo/amd64")
 
-if not deployPath:
-  raise 'DEB_DEPLOY_PATH environment variable is not defined'
-if not os.path.exists(deployPath):
-  raise 'DEB_DEPLOY_PATH environment variable is not a valid path'
+if not repoBasePath:
+  raise 'REPOSITORY_BASE_PATH environment variable is not defined'
+if not os.path.exists(repoBasePath):
+  raise 'REPOSITORY_BASE_PATH environment variable is not a valid path'
 
-for deb in debsList:
-  print('building:', deb)
-  os.chdir(os.path.join(baseDir, deb))
+updatedDebFiles = []
+for debDir in debDirList:
+  print('building: ', debDir)
+  os.chdir(os.path.join(baseDir, debDir))
   status = os.system('./build-deb.sh')
-  if status == 0:
-    os.system('mv *.deb %s' % deployPath)
+  debFiles = glob.glob('*.deb')
+  for file in debFiles:
+    if status == 0:
+      os.system('mv %s %s' % (file, repoDebPath))
+      updatedDebFiles.append(file)
+    else:
+      os.remove(file)
+
+if updatedDebFiles:
+  os.chdir(repoBasePath)
+  status = os.system('./refresh-repo.sh')
